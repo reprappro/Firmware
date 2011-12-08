@@ -288,8 +288,11 @@ void setup()
   #if Z_MAX_PIN > -1
     SET_INPUT(Z_MAX_PIN); 
   #endif
+/*  #if PROBE_PIN > -1
+    SET_INPUT(PROBE_PIN);
   #endif
-  
+  #endif
+*/
   #if (HEATER_0_PIN > -1) 
     SET_OUTPUT(HEATER_0_PIN);
   #endif  
@@ -604,7 +607,6 @@ inline void process_commands()
           
             destination[2] = 10 * Z_HOME_DIR;
             prepare_move();
-          
             
             current_position[2] = (Z_HOME_DIR == -1) ? (float)byteToint(EEPROM.read(Z_ADJUST_BYTE))/100 : Z_MAX_LENGTH;
             //current_position[2] = (Z_HOME_DIR == -1) ? 0 : Z_MAX_LENGTH;
@@ -617,6 +619,34 @@ inline void process_commands()
         feedrate = saved_feedrate;
         previous_millis_cmd = millis();
         break;
+/*      case 29:
+        saved_feedrate = feedrate;
+        if (PROBE_PIN > -1 && Z_HOME_DIR==-1){
+          current_position[2] = 0;
+          destination[2] = 1.5 * Z_MAX_LENGTH * Z_HOME_DIR;
+          feedrate = homing_feedrate[2];
+          prepare_move();
+          
+          //move up in small increments until switch makes
+          int z=0;
+          current_position[2] = 0;
+          Serial.print("ZMIN=");
+          Serial.println(READ(PROBE_PIN));
+          while(READ(PROBE_PIN) == true && z<50){
+            Serial.print("ZMIN=");
+            Serial.println(READ(PROBE_PIN));
+            destination[2] = current_position[2] - Z_INCREMENT * Z_HOME_DIR;
+            prepare_move();
+            z++;
+          }
+            
+          Serial.print("Z=");
+          Serial.println(current_position[2]);
+          //current_position[2] = (Z_HOME_DIR == -1) ? 0 : Z_MAX_LENGTH;
+          //destination[2] = current_position[2];
+          feedrate = 0;
+        }
+        break;*/
       case 90: // G90
         relative_mode = false;
         break;
@@ -761,10 +791,12 @@ inline void process_commands()
             Serial.print(output);
             Serial.print(" E:");
             Serial.print(error);
-            Serial.print(" current:");
-            Serial.print(current_raw);
-            Serial.print(" target:");
-            Serial.print(target_raw);
+            Serial.print(" P:");
+            Serial.print(pTerm);
+            Serial.print(" I:");
+            Serial.print(iTerm);
+            Serial.print(" D:");
+            Serial.print(dTerm);
             Serial.print(" iState:");
             Serial.println(temp_iState);                        
 #endif
@@ -878,7 +910,8 @@ inline void process_commands()
         #endif
         break;
       case 115: // M115
-        Serial.print("FIRMWARE_NAME:Sprinter FIRMWARE_URL:http%%3A/github.com/kliment/Sprinter/ PROTOCOL_VERSION:1.0 MACHINE_TYPE:Mendel EXTRUDER_COUNT:1 UUID:");
+        //Serial.print("FIRMWARE_NAME:Sprinter FIRMWARE_URL:http%%3A/github.com/kliment/Sprinter/ PROTOCOL_VERSION:1.0 MACHINE_TYPE:Mendel EXTRUDER_COUNT:1 UUID:");
+        Serial.print("FIRMWARE_NAME:rrp UUID:");
         Serial.println(uuid);
         break;
       case 114: // M114
