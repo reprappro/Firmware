@@ -278,9 +278,9 @@ const short bedtemptable[BNUMTEMPS][2] = {
 
 /*#define PROBE_PIN          11*/
 
-#define LED_PIN            -1
+#define LED_PIN            27
 
-#define FAN_PIN            12 
+#define FAN_PIN            4 
 
 #define PS_ON_PIN          -1
 #define KILL_PIN           -1
@@ -289,7 +289,7 @@ const short bedtemptable[BNUMTEMPS][2] = {
 
 #ifdef SANGUINOLOLU_V_1_2
 
-#define HEATER_1_PIN       4//12 // (bed)
+#define HEATER_1_PIN       12 // (bed)
 #define X_ENABLE_PIN       14
 #define Y_ENABLE_PIN       14
 #define Z_ENABLE_PIN       26

@@ -291,8 +291,9 @@ void setup()
 /*  #if PROBE_PIN > -1
     SET_INPUT(PROBE_PIN);
   #endif
-  #endif
 */
+  #endif
+
   #if (HEATER_0_PIN > -1) 
     SET_OUTPUT(HEATER_0_PIN);
   #endif  
