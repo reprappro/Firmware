@@ -122,7 +122,9 @@ double Kd = 20.0;//0.01;
 //M109 target window - machine will deem to have reached target temperature when nozzle reaches Temp = target - NZONE.
 int nzone = 5;//2;
 
-#define DEBUG_PID
+//#define DEBUG_PID
+
+#define FAN_INIT 200
 
 // How often should the heater check for new temp readings, in milliseconds
 #define HEATER_CHECK_INTERVAL 112
@@ -178,6 +180,47 @@ int nzone = 5;//2;
 
 // Thermistor lookup table for RS thermistor 198-961
 // Made with createTemperatureLookup.py (http://svn.reprap.org/trunk/reprap/firmware/Arduino/utilities/createTemperatureLookup.py)
+// ./createTemperatureLookup.py --r0=100000 --t0=25 --r1=0 --r2=10000 --beta=3960 --max-adc=1023
+// r0: 100000
+// t0: 25
+// r1: 0
+// r2: 10000
+// beta: 3960
+// max adc: 1023
+#define NUMTEMPS 30
+short temptable[NUMTEMPS][2] = {
+   {1, 704},
+   {15, 280},
+   {21, 266},
+   {41, 234},
+   {61, 208},
+   {81, 191},
+   {101, 178},
+   {121, 168},
+   {141, 159},
+   {161, 152},
+   {181, 146},
+   {221, 135},
+   {261, 126},
+   {301, 118},
+   {341, 111},
+   {381, 105},
+   {421, 99},
+   {461, 94},
+   {501, 88},
+   {541, 83},
+   {581, 78},
+   {621, 73},
+   {661, 68},
+   {741, 58},
+   {781, 52},
+   {821, 46},
+   {861, 40},
+   {901, 32},
+   {981, 7},
+   {1008, 0}
+};
+
 // ./createTemperatureLookup.py --r0=100000 --t0=25 --r1=0 --r2=4700 --beta=3960 --max-adc=1023
 // r0: 100000
 // t0: 25
@@ -185,7 +228,7 @@ int nzone = 5;//2;
 // r2: 4700
 // beta: 3960
 // max adc: 1023
-#define NUMTEMPS 30
+/*#define NUMTEMPS 30
 short temptable[NUMTEMPS][2] = {
    {1, 929},
    {36, 299},
@@ -218,29 +261,29 @@ short temptable[NUMTEMPS][2] = {
    {981, 23},
    {1016, 0}
 };
-
+*/
 //bed temp table, 100k EPCOS
 #define BNUMTEMPS 20
 const short bedtemptable[BNUMTEMPS][2] = {
-   {1, 816},
-   {54, 252},
-   {107, 206},
-   {160, 182},
-   {213, 165},
-   {266, 151},
-   {319, 140},
-   {372, 131},
-   {425, 122},
-   {478, 115},
-   {531, 107},
-   {584, 100},
-   {637, 93},
-   {690, 85},
-   {743, 78},
-   {796, 70},
-   {849, 60},
-   {902, 49},
-   {955, 34},
+   {1, 704},
+   {54, 216},
+   {107, 175},
+   {160, 152},
+   {213, 137},
+   {266, 125},
+   {319, 115},
+   {372, 106},
+   {425, 99},
+   {478, 91},
+   {531, 85},
+   {584, 78},
+   {637, 71},
+   {690, 65},
+   {743, 58},
+   {796, 50},
+   {849, 42},
+   {902, 31},
+   {955, 17},
    {1008, 0}
 };
 

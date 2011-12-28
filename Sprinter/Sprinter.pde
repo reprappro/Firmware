@@ -294,6 +294,10 @@ void setup()
 */
   #endif
 
+  #if (FAN_PIN > -1) 
+    SET_OUTPUT(FAN_PIN);
+    WRITE(FAN_PIN,FAN_INIT);
+  #endif  
   #if (HEATER_0_PIN > -1) 
     SET_OUTPUT(HEATER_0_PIN);
   #endif  
