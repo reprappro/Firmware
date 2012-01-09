@@ -60,6 +60,13 @@
 // M203 - Adjust Z height
 
 
+//Printer status variables
+int status = STATUS_OK; //
+int error_code = ERROR_CODE_NO_ERROR; //0=Nothing, 1=Heater thermistor error
+
+//Led counter (for blinking the led in different timings)
+int led_counter = 0;
+
 //Stepper Movement Variables
 
 char axis_codes[NUM_AXIS] = {'X', 'Y', 'Z', 'E'};
@@ -209,6 +216,10 @@ void setup()
       fromsd[i] = false;
   }
 
+  #if LED_PIN > -1
+    SET_OUTPUT(LED_PIN);
+    WRITE(LED_PIN,HIGH);
+  #endif
   
   //Initialize Dir Pins
   #if X_DIR_PIN > -1
@@ -672,6 +683,24 @@ inline void process_commands()
     
     switch( (int)code_value() ) 
     {
+      case 4: //Ask for status
+        Serial.print("S:");
+        Serial.print(status);
+        Serial.print(", ");
+        Serial.println(status_str[status]);
+        if (status == STATUS_ERROR)
+        {
+            Serial.print("EC:");
+            Serial.print(error_code);
+            Serial.print(", ");
+            Serial.println(error_code_str[error_code]);
+        }
+        break;
+      case 5: //Reset errors
+        status = STATUS_OK;
+        error_code = ERROR_CODE_NO_ERROR;
+        break;
+        
 #ifdef SDSUPPORT
         
       case 20: // M20 - list SD card
@@ -764,14 +793,21 @@ inline void process_commands()
 #endif
       case 104: // M104
         if (code_seen('S')) target_raw = temp2analogh(code_value());
-        #ifdef WATCHPERIOD
-            if(target_raw > current_raw){
-                watchmillis = max(1,millis());
-                watch_raw = current_raw;
-            }else{
-                watchmillis = 0;
-            }
-        #endif
+        if (error_code == ERROR_CODE_HOTEND_TEMPERATURE)
+        {
+            wait_for_temp(); //if we have had a nozzle error, we should wait even though not wait command
+        }
+        else
+        {
+            #ifdef WATCHPERIOD
+                if(target_raw > current_raw){
+                    watchmillis = max(1,millis());
+                    watch_raw = current_raw;
+                }else{
+                    watchmillis = 0;
+                }
+            #endif
+        }
         break;
       case 140: // M140 set bed temp
         #if TEMP_1_PIN > -1 || defined BED_USES_AD595
@@ -824,25 +860,9 @@ inline void process_commands()
           Serial.print(dTerm);
           return;
       case 109: // M109 - Wait for extruder heater to reach target.
-        if (code_seen('S')) target_raw = temp2analogh(code_value() - nzone);
-        #ifdef WATCHPERIOD
-            if(target_raw>current_raw){
-                watchmillis = max(1,millis());
-                watch_raw = current_raw;
-            }else{
-                watchmillis = 0;
-            }
-        #endif
-        codenum = millis(); 
-        while(current_raw < target_raw) {
-          if( (millis() - codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
-          {
-            Serial.print("T:");
-            Serial.println( analog2temp(current_raw) ); 
-            codenum = millis(); 
-          }
-          manage_heater();
-        }
+        if (code_seen('S')) 
+            target_raw = temp2analogh(code_value() - nzone);
+        wait_for_temp();
         break;
       case 190: // M190 - Wait bed for heater to reach target.
       #if TEMP_1_PIN > -1
@@ -1024,11 +1044,21 @@ void FlushSerialRequestResend()
 void ClearToSend()
 {
   previous_millis_cmd = millis();
-  #ifdef SDSUPPORT
-  if(fromsd[bufindr])
-    return;
-  #endif
-  Serial.println("ok"); 
+  if (status == STATUS_ERROR)
+  {
+    Serial.print("EC:");
+    Serial.println(error_code);
+    Serial.print(", ");
+    Serial.print(error_code_str[error_code]);
+  }
+  else
+  {
+    #ifdef SDSUPPORT
+    if(fromsd[bufindr])
+      return;
+    #endif
+  }   
+  Serial.println("ok");
 }
 
 inline void get_coordinates()
@@ -1468,6 +1498,44 @@ int read_max6675()
 }
 #endif
 
+void reset_status()
+{
+    status = STATUS_OK;
+    error_code = ERROR_CODE_NO_ERROR;
+}
+
+void wait_for_temp()
+{
+    unsigned long codenum; //throw away variable
+  
+    if (error_code == ERROR_CODE_HOTEND_TEMPERATURE)
+    {
+        reset_status();
+    }
+    
+    #ifdef WATCHPERIOD
+        if(target_raw>current_raw)
+        {
+            watchmillis = max(1,millis());
+            watch_raw = current_raw;
+        }
+        else
+        {
+            watchmillis = 0;
+        }
+    #endif
+    codenum = millis(); 
+    while ((current_raw < target_raw) && (status = STATUS_OK)) 
+    {
+        if( (millis() - codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
+        {
+            Serial.print("T:");
+            Serial.println( analog2temp(current_raw) ); 
+            codenum = millis(); 
+        }
+        manage_heater();
+    }
+}
 
 void manage_heater()
 {
@@ -1498,9 +1566,6 @@ void manage_heater()
         if(watch_raw + 1 >= current_raw){
             target_raw = 0;
             WRITE(HEATER_0_PIN,LOW);
-            #if LED_PIN>-1
-                WRITE(LED_PIN,LOW);
-            #endif
         }else{
             watchmillis = 0;
         }
@@ -1508,7 +1573,11 @@ void manage_heater()
   #endif
   #ifdef MINTEMP
     if(current_raw <= minttemp)
+    {
+        status = STATUS_ERROR;
+        error_code = ERROR_CODE_HOTEND_TEMPERATURE;
         target_raw = 0;
+    }
   #endif
   #ifdef MAXTEMP
     if(current_raw >= maxttemp) {
@@ -1530,19 +1599,35 @@ void manage_heater()
       if(current_raw >= target_raw)
       {
         WRITE(HEATER_0_PIN,LOW);
-        #if LED_PIN>-1
-            WRITE(LED_PIN,LOW);
-        #endif
       }
       else 
       {
         WRITE(HEATER_0_PIN,HIGH);
-        #if LED_PIN > -1
-            WRITE(LED_PIN,HIGH);
-        #endif
       }
     #endif
   #endif
+  
+  //LED handling is put in here for convinient handling
+  #if LED_PIN>-1
+    if (status==STATUS_ERROR) //on error, blink fast
+    {
+        TOGGLE(LED_PIN);
+    }
+    else if (target_raw > minttemp) //on heated hotend, blink slow
+    {
+        if ((led_counter++) > 4)
+        {
+            led_counter = 0;
+            TOGGLE(LED_PIN);
+        }
+    }
+    else
+    {
+        WRITE(LED_PIN,HIGH); //In idle, just on
+    }
+  #endif
+  
+  
     
   if(millis() - previous_millis_bed_heater < BED_CHECK_INTERVAL)
     return;
