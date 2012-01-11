@@ -6,6 +6,7 @@
 //#include "pins.h"
 #include "Configuration.h"
 #include "Sprinter.h"
+#include "SerialManager.h"
 #include <EEPROM.h>
 
 #ifdef SDSUPPORT
@@ -175,12 +176,12 @@ unsigned long stepper_inactive_time = 0;
         root.close();
     if (!card.init(SPI_FULL_SPEED,SDSS)){
         //if (!card.init(SPI_HALF_SPEED,SDSS))
-          Serial.println("SD init fail");
+          SerialMgr.cur()->println("SD init fail");
     }
     else if (!volume.init(&card))
-          Serial.println("volume.init failed");
+          SerialMgr.cur()->println("volume.init failed");
     else if (!root.openRoot(&volume)) 
-          Serial.println("openRoot failed");
+          SerialMgr.cur()->println("openRoot failed");
     else 
             sdactive = true;
   #endif
@@ -199,10 +200,10 @@ unsigned long stepper_inactive_time = 0;
       end[1] = '\r';
       end[2] = '\n';
       end[3] = '\0';
-      //Serial.println(begin);
+      //SerialMgr.cur()->println(begin);
       file.write(begin);
       if (file.writeError){
-          Serial.println("error writing to file");
+          SerialMgr.cur()->println("error writing to file");
       }
   }
 #endif
@@ -212,6 +213,11 @@ void setup()
 { 
   Serial.begin(BAUDRATE);
   Serial.println("start");
+  
+  #ifdef BLUETOOTH
+	BLUETOOTH_SERIAL.begin(BAUDRATE);
+  #endif
+  
   for(int i = 0; i < BUFSIZE; i++){
       fromsd[i] = false;
   }
@@ -367,6 +373,20 @@ void setup()
 
 void loop()
 {
+  #ifdef BLUETOOTH
+	if(BLUETOOTH_SERIAL.available() && !serial_count)
+	{
+		SerialMgr.ChangeSerial(&BLUETOOTH_SERIAL);
+	}
+    else
+    {
+        if(Serial.available() && !serial_count)
+        {
+            SerialMgr.ChangeSerial(&Serial);
+        }
+	}
+  #endif
+  
   if(buflen<3)
 	get_command();
   
@@ -375,12 +395,12 @@ void loop()
     if(savetosd){
         if(strstr(cmdbuffer[bufindr],"M29") == NULL){
             write_command(cmdbuffer[bufindr]);
-            Serial.println("ok");
+            SerialMgr.cur()->println("ok");
         }else{
             file.sync();
             file.close();
             savetosd = false;
-            Serial.println("Done saving file.");
+            SerialMgr.cur()->println("Done saving file.");
         }
     }else{
         process_commands();
@@ -399,8 +419,8 @@ void loop()
 
 inline void get_command() 
 { 
-  while( Serial.available() > 0  && buflen < BUFSIZE) {
-    serial_char = Serial.read();
+  while( SerialMgr.cur()->available() > 0  && buflen < BUFSIZE) {
+    serial_char = SerialMgr.cur()->read();
     if(serial_char == '\n' || serial_char == '\r' || serial_char == ':' || serial_count >= (MAX_CMD_SIZE - 1) ) 
     {
       if(!serial_count) return; //if empty line
@@ -412,9 +432,9 @@ inline void get_command()
     strchr_pointer = strchr(cmdbuffer[bufindw], 'N');
     gcode_N = (strtol(&cmdbuffer[bufindw][strchr_pointer - cmdbuffer[bufindw] + 1], NULL, 10));
     if(gcode_N != gcode_LastN+1 && (strstr(cmdbuffer[bufindw], "M110") == NULL) ) {
-      Serial.print("Serial Error: Line Number is not Last Line Number+1, Last Line:");
-      Serial.println(gcode_LastN);
-      //Serial.println(gcode_N);
+      SerialMgr.cur()->print("Serial Error: Line Number is not Last Line Number+1, Last Line:");
+      SerialMgr.cur()->println(gcode_LastN);
+      //SerialMgr.cur()->println(gcode_N);
       FlushSerialRequestResend();
       serial_count = 0;
       return;
@@ -428,8 +448,8 @@ inline void get_command()
       strchr_pointer = strchr(cmdbuffer[bufindw], '*');
   
       if( (int)(strtod(&cmdbuffer[bufindw][strchr_pointer - cmdbuffer[bufindw] + 1], NULL)) != checksum) {
-        Serial.print("Error: checksum mismatch, Last Line:");
-        Serial.println(gcode_LastN);
+        SerialMgr.cur()->print("Error: checksum mismatch, Last Line:");
+        SerialMgr.cur()->println(gcode_LastN);
         FlushSerialRequestResend();
         serial_count = 0;
         return;
@@ -438,8 +458,8 @@ inline void get_command()
     }
     else 
     {
-      Serial.print("Error: No Checksum with line number, Last Line:");
-      Serial.println(gcode_LastN);
+      SerialMgr.cur()->print("Error: No Checksum with line number, Last Line:");
+      SerialMgr.cur()->println(gcode_LastN);
       FlushSerialRequestResend();
       serial_count = 0;
       return;
@@ -452,8 +472,8 @@ inline void get_command()
   {
     if((strstr(cmdbuffer[bufindw], "*") != NULL))
     {
-      Serial.print("Error: No Line Number with checksum, Last Line:");
-      Serial.println(gcode_LastN);
+      SerialMgr.cur()->print("Error: No Line Number with checksum, Last Line:");
+      SerialMgr.cur()->println(gcode_LastN);
       serial_count = 0;
       return;
     }
@@ -467,7 +487,7 @@ inline void get_command()
               if(savetosd)
                 break;
               #endif
-			  Serial.println("ok"); 
+			  SerialMgr.cur()->println("ok"); 
 			  break;
 		default:
 			break;
@@ -499,7 +519,7 @@ if(!sdmode || serial_count!=0){
         sdpos = file.curPosition();
         if(sdpos >= filesize){
             sdmode = false;
-            Serial.println("Done printing file");
+            SerialMgr.cur()->println("Done printing file");
         }
       if(!serial_count) return; //if empty line
       cmdbuffer[bufindw][serial_count] = 0; //terminate string
@@ -646,18 +666,18 @@ inline void process_commands()
           //move up in small increments until switch makes
           int z=0;
           current_position[2] = 0;
-          Serial.print("ZMIN=");
-          Serial.println(READ(PROBE_PIN));
+          SerialMgr.cur()->print("ZMIN=");
+          SerialMgr.cur()->println(READ(PROBE_PIN));
           while(READ(PROBE_PIN) == true && z<50){
-            Serial.print("ZMIN=");
-            Serial.println(READ(PROBE_PIN));
+            SerialMgr.cur()->print("ZMIN=");
+            SerialMgr.cur()->println(READ(PROBE_PIN));
             destination[2] = current_position[2] - Z_INCREMENT * Z_HOME_DIR;
             prepare_move();
             z++;
           }
             
-          Serial.print("Z=");
-          Serial.println(current_position[2]);
+          SerialMgr.cur()->print("Z=");
+          SerialMgr.cur()->println(current_position[2]);
           //current_position[2] = (Z_HOME_DIR == -1) ? 0 : Z_MAX_LENGTH;
           //destination[2] = current_position[2];
           feedrate = 0;
@@ -684,16 +704,16 @@ inline void process_commands()
     switch( (int)code_value() ) 
     {
       case 4: //Ask for status
-        Serial.print("S:");
-        Serial.print(status);
-        Serial.print(", ");
-        Serial.println(status_str[status]);
+        SerialMgr.cur()->print("S:");
+        SerialMgr.cur()->print(status);
+        SerialMgr.cur()->print(", ");
+        SerialMgr.cur()->println(status_str[status]);
         if (status == STATUS_ERROR)
         {
-            Serial.print("EC:");
-            Serial.print(error_code);
-            Serial.print(", ");
-            Serial.println(error_code_str[error_code]);
+            SerialMgr.cur()->print("EC:");
+            SerialMgr.cur()->print(error_code);
+            SerialMgr.cur()->print(", ");
+            SerialMgr.cur()->println(error_code_str[error_code]);
         }
         break;
       case 5: //Reset errors
@@ -704,9 +724,9 @@ inline void process_commands()
 #ifdef SDSUPPORT
         
       case 20: // M20 - list SD card
-        Serial.println("Begin file list");
+        SerialMgr.cur()->println("Begin file list");
         root.ls();
-        Serial.println("End file list");
+        SerialMgr.cur()->println("End file list");
         break;
       case 21: // M21 - init SD card
         sdmode = false;
@@ -724,16 +744,16 @@ inline void process_commands()
             if(starpos!=NULL)
                 *(starpos-1)='\0';
             if (file.open(&root, strchr_pointer + 4, O_READ)) {
-                Serial.print("File opened:");
-                Serial.print(strchr_pointer + 4);
-                Serial.print(" Size:");
-                Serial.println(file.fileSize());
+                SerialMgr.cur()->print("File opened:");
+                SerialMgr.cur()->print(strchr_pointer + 4);
+                SerialMgr.cur()->print(" Size:");
+                SerialMgr.cur()->println(file.fileSize());
                 sdpos = 0;
                 filesize = file.fileSize();
-                Serial.println("File selected");
+                SerialMgr.cur()->println("File selected");
             }
             else{
-                Serial.println("file.open failed");
+                SerialMgr.cur()->println("file.open failed");
             }
         }
         break;
@@ -755,12 +775,12 @@ inline void process_commands()
         break;
       case 27: //M27 - Get SD status
         if(sdactive){
-            Serial.print("SD printing byte ");
-            Serial.print(sdpos);
-            Serial.print("/");
-            Serial.println(filesize);
+            SerialMgr.cur()->print("SD printing byte ");
+            SerialMgr.cur()->print(sdpos);
+            SerialMgr.cur()->print("/");
+            SerialMgr.cur()->println(filesize);
         }else{
-            Serial.println("Not SD printing");
+            SerialMgr.cur()->println("Not SD printing");
         }
         break;
             case 28: //M28 - Start SD write
@@ -776,13 +796,13 @@ inline void process_commands()
             }
       if (!file.open(&root, strchr_pointer+4, O_CREAT | O_APPEND | O_WRITE | O_TRUNC))
             {
-            Serial.print("open failed, File: ");
-            Serial.print(strchr_pointer + 4);
-            Serial.print(".");
+            SerialMgr.cur()->print("open failed, File: ");
+            SerialMgr.cur()->print(strchr_pointer + 4);
+            SerialMgr.cur()->print(".");
             }else{
             savetosd = true;
-            Serial.print("Writing to file: ");
-            Serial.println(strchr_pointer + 4);
+            SerialMgr.cur()->print("Writing to file: ");
+            SerialMgr.cur()->println(strchr_pointer + 4);
             }
         }
         break;
@@ -822,27 +842,27 @@ inline void process_commands()
           bt = analog2tempBed(current_bed_raw);
         #endif
         #if (TEMP_0_PIN > -1) || defined (HEATER_USES_MAX6675) || defined HEATER_USES_AD595
-            Serial.print("ok T:");
-            Serial.print(tt); 
+            SerialMgr.cur()->print("ok T:");
+            SerialMgr.cur()->print(tt); 
           #if TEMP_1_PIN > -1 || defined BED_USES_AD595
-            Serial.print(" B:");
-            Serial.println(bt);
+            SerialMgr.cur()->print(" B:");
+            SerialMgr.cur()->println(bt);
 #ifdef DEBUG_PID
-            Serial.print(" R:");
-            Serial.print(output);
-            Serial.print(" E:");
-            Serial.print(error);
-            Serial.print(" P:");
-            Serial.print(pTerm);
-            Serial.print(" I:");
-            Serial.print(iTerm);
-            Serial.print(" D:");
-            Serial.print(dTerm);
-            Serial.print(" iState:");
-            Serial.println(temp_iState);                        
+            SerialMgr.cur()->print(" R:");
+            SerialMgr.cur()->print(output);
+            SerialMgr.cur()->print(" E:");
+            SerialMgr.cur()->print(error);
+            SerialMgr.cur()->print(" P:");
+            SerialMgr.cur()->print(pTerm);
+            SerialMgr.cur()->print(" I:");
+            SerialMgr.cur()->print(iTerm);
+            SerialMgr.cur()->print(" D:");
+            SerialMgr.cur()->print(dTerm);
+            SerialMgr.cur()->print(" iState:");
+            SerialMgr.cur()->println(temp_iState);                        
 #endif
           #else
-            Serial.println();
+            SerialMgr.cur()->println();
           #endif
         #else
           #error No temperature source available
@@ -850,14 +870,14 @@ inline void process_commands()
         return;
         //break;
       case 205:
-          Serial.print("ok o:");
-          Serial.print(output);
-          Serial.print(", p:");
-          Serial.print(pTerm);
-          Serial.print(", i:");
-          Serial.print(iTerm);
-          Serial.print(", d:");
-          Serial.print(dTerm);
+          SerialMgr.cur()->print("ok o:");
+          SerialMgr.cur()->print(output);
+          SerialMgr.cur()->print(", p:");
+          SerialMgr.cur()->print(pTerm);
+          SerialMgr.cur()->print(", i:");
+          SerialMgr.cur()->print(iTerm);
+          SerialMgr.cur()->print(", d:");
+          SerialMgr.cur()->print(dTerm);
           return;
       case 109: // M109 - Wait for extruder heater to reach target.
         if (code_seen('S')) 
@@ -872,10 +892,10 @@ inline void process_commands()
           if( (millis()-codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
           {
             tt=analog2temp(current_raw);
-            Serial.print("T:");
-            Serial.print( tt );
-            Serial.print(" B:");
-            Serial.println( analog2temp(current_bed_raw) ); 
+            SerialMgr.cur()->print("T:");
+            SerialMgr.cur()->print( tt );
+            SerialMgr.cur()->print(" B:");
+            SerialMgr.cur()->println( analog2temp(current_bed_raw) ); 
             codenum = millis(); 
           }
             manage_heater();
@@ -935,46 +955,46 @@ inline void process_commands()
         #endif
         break;
       case 115: // M115
-        //Serial.print("FIRMWARE_NAME:Sprinter FIRMWARE_URL:http%%3A/github.com/kliment/Sprinter/ PROTOCOL_VERSION:1.0 MACHINE_TYPE:Mendel EXTRUDER_COUNT:1 UUID:");
-        Serial.print("FIRMWARE_NAME:rrp UUID:");
-        Serial.println(uuid);
+        //SerialMgr.cur()->print("FIRMWARE_NAME:Sprinter FIRMWARE_URL:http%%3A/github.com/kliment/Sprinter/ PROTOCOL_VERSION:1.0 MACHINE_TYPE:Mendel EXTRUDER_COUNT:1 UUID:");
+        SerialMgr.cur()->print("FIRMWARE_NAME:rrp UUID:");
+        SerialMgr.cur()->println(uuid);
         break;
       case 114: // M114
-	Serial.print("X:");
-        Serial.print(current_position[0]);
-	Serial.print("Y:");
-        Serial.print(current_position[1]);
-	Serial.print("Z:");
-        Serial.print(current_position[2]);
-	Serial.print("E:");
-        Serial.println(current_position[3]);
+	SerialMgr.cur()->print("X:");
+        SerialMgr.cur()->print(current_position[0]);
+	SerialMgr.cur()->print("Y:");
+        SerialMgr.cur()->print(current_position[1]);
+	SerialMgr.cur()->print("Z:");
+        SerialMgr.cur()->print(current_position[2]);
+	SerialMgr.cur()->print("E:");
+        SerialMgr.cur()->println(current_position[3]);
         break;
       case 119: // M119
       	#if (X_MIN_PIN > -1)
-      	Serial.print("x_min:");
-        Serial.print((READ(X_MIN_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
+      	SerialMgr.cur()->print("x_min:");
+        SerialMgr.cur()->print((READ(X_MIN_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
       	#endif
       	#if (X_MAX_PIN > -1)
-      	Serial.print("x_max:");
-        Serial.print((READ(X_MAX_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
+      	SerialMgr.cur()->print("x_max:");
+        SerialMgr.cur()->print((READ(X_MAX_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
       	#endif
       	#if (Y_MIN_PIN > -1)
-      	Serial.print("y_min:");
-        Serial.print((READ(Y_MIN_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
+      	SerialMgr.cur()->print("y_min:");
+        SerialMgr.cur()->print((READ(Y_MIN_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
       	#endif
       	#if (Y_MAX_PIN > -1)
-      	Serial.print("y_max:");
-        Serial.print((READ(Y_MAX_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
+      	SerialMgr.cur()->print("y_max:");
+        SerialMgr.cur()->print((READ(Y_MAX_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
       	#endif
       	#if (Z_MIN_PIN > -1)
-      	Serial.print("z_min:");
-        Serial.print((READ(Z_MIN_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
+      	SerialMgr.cur()->print("z_min:");
+        SerialMgr.cur()->print((READ(Z_MIN_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
       	#endif
       	#if (Z_MAX_PIN > -1)
-      	Serial.print("z_max:");
-        Serial.print((READ(Z_MAX_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
+      	SerialMgr.cur()->print("z_max:");
+        SerialMgr.cur()->print((READ(Z_MAX_PIN)^ENDSTOPS_INVERTING)?"H ":"L ");
       	#endif
-        Serial.println("");
+        SerialMgr.cur()->println("");
       	break;
       #ifdef RAMP_ACCELERATION
       //TODO: update for all axis, use for loop
@@ -1002,12 +1022,12 @@ inline void process_commands()
         if(code_seen('F')) pid_max = code_value();
         if(code_seen('Z')) nzone = code_value();
         if(code_seen('W')) pid_i_max = code_value();
-        Serial.print("Kp ");Serial.println(Kp);
-        Serial.print("Ki ");Serial.println(Ki);
-        Serial.print("Kd ");Serial.println(Kd);
-        Serial.print("PID_MAX ");Serial.println(pid_max);
-        Serial.print("PID_I_MAX ");Serial.println(pid_i_max);
-        Serial.print("NZONE ");Serial.println(nzone);
+        SerialMgr.cur()->print("Kp ");SerialMgr.cur()->println(Kp);
+        SerialMgr.cur()->print("Ki ");SerialMgr.cur()->println(Ki);
+        SerialMgr.cur()->print("Kd ");SerialMgr.cur()->println(Kd);
+        SerialMgr.cur()->print("PID_MAX ");SerialMgr.cur()->println(pid_max);
+        SerialMgr.cur()->print("PID_I_MAX ");SerialMgr.cur()->println(pid_i_max);
+        SerialMgr.cur()->print("NZONE ");SerialMgr.cur()->println(nzone);
         temp_iState_min = -pid_i_max / Ki;
         temp_iState_max = pid_i_max / Ki;
         break;
@@ -1016,8 +1036,8 @@ inline void process_commands()
     
   }
   else{
-      Serial.println("Unknown command:");
-      Serial.println(cmdbuffer[bufindr]);
+      SerialMgr.cur()->println("Unknown command:");
+      SerialMgr.cur()->println(cmdbuffer[bufindr]);
   }
   
   ClearToSend();
@@ -1035,9 +1055,9 @@ int byteToint(byte value){
 void FlushSerialRequestResend()
 {
   //char cmdbuffer[bufindr][100]="Resend:";
-  Serial.flush();
-  Serial.print("Resend:");
-  Serial.println(gcode_LastN + 1);
+  SerialMgr.cur()->flush();
+  SerialMgr.cur()->print("Resend:");
+  SerialMgr.cur()->println(gcode_LastN + 1);
   ClearToSend();
 }
 
@@ -1046,10 +1066,10 @@ void ClearToSend()
   previous_millis_cmd = millis();
   if (status == STATUS_ERROR)
   {
-    Serial.print("EC:");
-    Serial.println(error_code);
-    Serial.print(", ");
-    Serial.print(error_code_str[error_code]);
+    SerialMgr.cur()->print("EC:");
+    SerialMgr.cur()->println(error_code);
+    SerialMgr.cur()->print(", ");
+    SerialMgr.cur()->print(error_code_str[error_code]);
   }
   else
   {
@@ -1058,7 +1078,7 @@ void ClearToSend()
       return;
     #endif
   }   
-  Serial.println("ok");
+  SerialMgr.cur()->println("ok");
 }
 
 inline void get_coordinates()
@@ -1529,8 +1549,8 @@ void wait_for_temp()
     {
         if( (millis() - codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
         {
-            Serial.print("T:");
-            Serial.println( analog2temp(current_raw) ); 
+            SerialMgr.cur()->print("T:");
+            SerialMgr.cur()->println( analog2temp(current_raw) ); 
             codenum = millis(); 
         }
         manage_heater();
@@ -1765,75 +1785,75 @@ if( (millis()-previous_millis_cmd) >  stepper_inactive_time ) if(stepper_inactiv
 
 #ifdef DEBUG
 void log_message(char*   message) {
-  Serial.print("DEBUG"); Serial.println(message);
+  SerialMgr.cur()->print("DEBUG"); SerialMgr.cur()->println(message);
 }
 
 void log_bool(char* message, bool value) {
-  Serial.print("DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
+  SerialMgr.cur()->print("DEBUG"); SerialMgr.cur()->print(message); SerialMgr.cur()->print(": "); SerialMgr.cur()->println(value);
 }
 
 void log_int(char* message, int value) {
-  Serial.print("DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
+  SerialMgr.cur()->print("DEBUG"); SerialMgr.cur()->print(message); SerialMgr.cur()->print(": "); SerialMgr.cur()->println(value);
 }
 
 void log_long(char* message, long value) {
-  Serial.print("DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
+  SerialMgr.cur()->print("DEBUG"); SerialMgr.cur()->print(message); SerialMgr.cur()->print(": "); SerialMgr.cur()->println(value);
 }
 
 void log_float(char* message, float value) {
-  Serial.print("DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
+  SerialMgr.cur()->print("DEBUG"); SerialMgr.cur()->print(message); SerialMgr.cur()->print(": "); SerialMgr.cur()->println(value);
 }
 
 void log_uint(char* message, unsigned int value) {
-  Serial.print("DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
+  SerialMgr.cur()->print("DEBUG"); SerialMgr.cur()->print(message); SerialMgr.cur()->print(": "); SerialMgr.cur()->println(value);
 }
 
 void log_ulong(char* message, unsigned long value) {
-  Serial.print("DEBUG"); Serial.print(message); Serial.print(": "); Serial.println(value);
+  SerialMgr.cur()->print("DEBUG"); SerialMgr.cur()->print(message); SerialMgr.cur()->print(": "); SerialMgr.cur()->println(value);
 }
 
 void log_int_array(char* message, int value[], int array_lenght) {
-  Serial.print("DEBUG"); Serial.print(message); Serial.print(": {");
+  SerialMgr.cur()->print("DEBUG"); SerialMgr.cur()->print(message); SerialMgr.cur()->print(": {");
   for(int i=0; i < array_lenght; i++){
-    Serial.print(value[i]);
-    if(i != array_lenght-1) Serial.print(", ");
+    SerialMgr.cur()->print(value[i]);
+    if(i != array_lenght-1) SerialMgr.cur()->print(", ");
   }
-  Serial.println("}");
+  SerialMgr.cur()->println("}");
 }
 
 void log_long_array(char* message, long value[], int array_lenght) {
-  Serial.print("DEBUG"); Serial.print(message); Serial.print(": {");
+  SerialMgr.cur()->print("DEBUG"); SerialMgr.cur()->print(message); SerialMgr.cur()->print(": {");
   for(int i=0; i < array_lenght; i++){
-    Serial.print(value[i]);
-    if(i != array_lenght-1) Serial.print(", ");
+    SerialMgr.cur()->print(value[i]);
+    if(i != array_lenght-1) SerialMgr.cur()->print(", ");
   }
-  Serial.println("}");
+  SerialMgr.cur()->println("}");
 }
 
 void log_float_array(char* message, float value[], int array_lenght) {
-  Serial.print("DEBUG"); Serial.print(message); Serial.print(": {");
+  SerialMgr.cur()->print("DEBUG"); SerialMgr.cur()->print(message); SerialMgr.cur()->print(": {");
   for(int i=0; i < array_lenght; i++){
-    Serial.print(value[i]);
-    if(i != array_lenght-1) Serial.print(", ");
+    SerialMgr.cur()->print(value[i]);
+    if(i != array_lenght-1) SerialMgr.cur()->print(", ");
   }
-  Serial.println("}");
+  SerialMgr.cur()->println("}");
 }
 
 void log_uint_array(char* message, unsigned int value[], int array_lenght) {
-  Serial.print("DEBUG"); Serial.print(message); Serial.print(": {");
+  SerialMgr.cur()->print("DEBUG"); SerialMgr.cur()->print(message); SerialMgr.cur()->print(": {");
   for(int i=0; i < array_lenght; i++){
-    Serial.print(value[i]);
-    if(i != array_lenght-1) Serial.print(", ");
+    SerialMgr.cur()->print(value[i]);
+    if(i != array_lenght-1) SerialMgr.cur()->print(", ");
   }
-  Serial.println("}");
+  SerialMgr.cur()->println("}");
 }
 
 void log_ulong_array(char* message, unsigned long value[], int array_lenght) {
-  Serial.print("DEBUG"); Serial.print(message); Serial.print(": {");
+  SerialMgr.cur()->print("DEBUG"); SerialMgr.cur()->print(message); SerialMgr.cur()->print(": {");
   for(int i=0; i < array_lenght; i++){
-    Serial.print(value[i]);
-    if(i != array_lenght-1) Serial.print(", ");
+    SerialMgr.cur()->print(value[i]);
+    if(i != array_lenght-1) SerialMgr.cur()->print(", ");
   }
-  Serial.println("}");
+  SerialMgr.cur()->println("}");
 }
 #endif
