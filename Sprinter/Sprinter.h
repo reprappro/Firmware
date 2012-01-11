@@ -2,14 +2,29 @@
 // Licence: GPL
 #include <WProgram.h>
 #include "fastio.h"
+
+#define STATUS_OK 0
+#define STATUS_SD 1
+#define STATUS_ERROR 2
+const char* status_str[] = { "Ok", "SD", "Error"};
+    
+
+#define ERROR_CODE_NO_ERROR 0
+#define ERROR_CODE_HOTEND_TEMPERATURE 1
+#define ERROR_CODE_BED_TEMPERATURE 2
+const char* error_code_str[] = { "No Error", "Hotend", "Bed" };
+
+
 extern "C" void __cxa_pure_virtual();
 void __cxa_pure_virtual(){};
 void get_command();
 void process_commands();
+void reset_status();
 
 void manage_inactivity(byte debug);
 
 void manage_heater();
+void wait_for_temp();
 int temp2analogu(int celsius, const short table[][2], int numtemps, int source);
 int analog2tempu(int raw, const short table[][2], int numtemps, int source);
 #ifdef HEATER_USES_THERMISTOR

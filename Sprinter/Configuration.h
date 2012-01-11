@@ -38,6 +38,12 @@ const bool ENDSTOPS_INVERTING = false; //set to true to invert the logic of the 
 // Comment out (using // at the start of the line) to disable SD support:
 #define SDSUPPORT 1
 
+// Comment out (using // at the start of the line) to disable Bluetooth support:
+#define BLUETOOTH
+#ifdef BLUETOOTH
+	#define BLUETOOTH_SERIAL Serial1
+#endif
+
 
 //// ADVANCED SETTINGS - to tweak parameters
 
