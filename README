@@ -1,5 +1,10 @@
 Firmware for RepRapPro Huxley, based on https://github.com/kliment/Sprinter.
 
+There are two slightly different configurations: 
+
+   1. Sprinter_Melzi, which is configured for the Melzi electronics (http://reprap.org/wiki/Melzi).
+   2. Sprinter_Sanguinololu, which is configured for the Sanguinololu electronics (http://reprap.org/wiki/Sanguinololu).
+
 The leading developers of Sprinter are currently Kliment and caru, though many others contribute with their patches.
 
 This is a firmware for RAMPS and other reprap single-processor electronics setups. It supports printing from SD card, active heatbed control, and ATmega internal pullups.
