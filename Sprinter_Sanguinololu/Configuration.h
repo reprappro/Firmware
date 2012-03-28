@@ -1,7 +1,10 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-//this is it!
+// Uncomment ONE of the next three lines - the one for your RepRap machine
+//#define REPRAPPRO_HUXLEY
+//#define REPRAPPRO_MENDEL
+//#define REPRAPPRO_WALLACE
 
 // BASIC SETTINGS: select your board type, thermistor type, axis scaling, and endstop configuration
 
@@ -37,6 +40,14 @@ const bool ENDSTOPS_INVERTING = false; //set to true to invert the logic of the 
 
 // Comment out (using // at the start of the line) to disable SD support:
 #define SDSUPPORT 1
+
+#ifndef REPRAPPRO_HUXLEY
+#ifndef REPRAPPRO_MENDEL
+#ifndef REPRAPPRO_WALLACE
+#error Uncomment one of #define REPRAPPRO_HUXLEY, REPRAPPRO_MENDEL or REPRAPPRO_WALLACE at the start of the file Configuration.h
+#endif
+#endif
+#endif
 
 
 //// ADVANCED SETTINGS - to tweak parameters
