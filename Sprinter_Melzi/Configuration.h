@@ -1,7 +1,10 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-//this is it!
+// Uncomment ONE of the next three lines - the one for your RepRap machine
+//#define REPRAPPRO_HUXLEY
+//#define REPRAPPRO_MENDEL
+//#define REPRAPPRO_WALLACE
 
 // BASIC SETTINGS: select your board type, thermistor type, axis scaling, and endstop configuration
 
@@ -10,7 +13,7 @@
 // RAMPS 1.3 = 33
 // Gen6 = 5, 
 // Sanguinololu up to 1.1 = 6
-// Sanguinololu 1.2 and above = 62
+// Sanguinololu 1.2 and above, and Melzi = 62
 #define MOTHERBOARD 62 
 
 //// Thermistor settings:
@@ -45,6 +48,15 @@ const bool ENDSTOPS_INVERTING = false; //set to true to invert the logic of the 
 #endif
 
 
+#ifndef REPRAPPRO_HUXLEY
+#ifndef REPRAPPRO_MENDEL
+#ifndef REPRAPPRO_WALLACE
+#error Uncomment one of #define REPRAPPRO_HUXLEY, REPRAPPRO_MENDEL or REPRAPPRO_WALLACE at the start of the file Configuration.h
+#endif
+#endif
+#endif
+
+
 //// ADVANCED SETTINGS - to tweak parameters
 
 //#include "thermistortables.h"
@@ -75,9 +87,21 @@ const bool INVERT_E_DIR = true;
 
 const bool min_software_endstops = false; //If true, axis won't move to coordinates less than zero.
 const bool max_software_endstops = true;  //If true, axis won't move to coordinates greater than the defined lengths below.
+#ifdef REPRAPPRO_HUXLEY
 const int X_MAX_LENGTH = 150;
 const int Y_MAX_LENGTH = 148;
 const int Z_MAX_LENGTH = 100;
+#endif
+#ifdef REPRAPPRO_WALLACE
+const int X_MAX_LENGTH = 150;
+const int Y_MAX_LENGTH = 148;
+const int Z_MAX_LENGTH = 100;
+#endif
+#ifdef REPRAPPRO_MENDEL
+const int X_MAX_LENGTH = 200;
+const int Y_MAX_LENGTH = 200;
+const int Z_MAX_LENGTH = 100;
+#endif
 
 /*#define Z_INCREMENT 0.05*/
 
@@ -268,6 +292,7 @@ short temptable[NUMTEMPS][2] = {
    {1016, 0}
 };
 */
+#ifdef REPRAPPRO_HUXLEY
 //bed temp table, 100k EPCOS
 #define BNUMTEMPS 20
 const short bedtemptable[BNUMTEMPS][2] = {
@@ -292,6 +317,42 @@ const short bedtemptable[BNUMTEMPS][2] = {
    {955, 17},
    {1008, 0}
 };
+#endif
+
+#ifdef REPRAPPRO_MENDEL
+// RS thermistor 484-0149; EPCOS B57550G103J
+// Made with createTemperatureLookup.py (http://svn.reprap.org/trunk/reprap/firmware/Arduino/utilities/createTemperatureLookup.py)
+// ./createTemperatureLookup.py --r0=10000 --t0=25 --r1=0 --r2=4700 --beta=3480 --max-adc=1023
+// r0: 10000
+// t0: 25
+// r1: 0
+// r2: 4700
+// beta: 3480
+// max adc: 1023
+#define BNUMTEMPS 20
+const short bedtemptable[BNUMTEMPS][2] = {
+   {1, 599},
+   {54, 160},
+   {107, 123},
+   {160, 103},
+   {213, 90},
+   {266, 79},
+   {319, 70},
+   {372, 62},
+   {425, 55},
+   {478, 49},
+   {531, 43},
+   {584, 37},
+   {637, 31},
+   {690, 25},
+   {743, 19},
+   {796, 12},
+   {849, 5},
+   {902, -3},
+   {955, -16},
+   {1008, -42}
+};
+#endif
 
 /****************************************************************************************
 * Sanguinololu pin assignment
@@ -304,7 +365,9 @@ const short bedtemptable[BNUMTEMPS][2] = {
 #if MOTHERBOARD == 6
 #define KNOWN_BOARD 1
 #ifndef __AVR_ATmega644P__
-#error Oops!  Make sure you have 'Sanguino' selected from the 'Tools -> Boards' menu.
+#ifndef __AVR_ATmega1284P__
+#error Oops!  Make sure you have the appropriate 'Sanguino' selected from the 'Tools -> Boards' menu.
+#endif
 #endif
 
 #define X_STEP_PIN         15
