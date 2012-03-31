@@ -2,7 +2,7 @@
 #define CONFIGURATION_H
 
 // Uncomment ONE of the next three lines - the one for your RepRap machine
-//#define REPRAPPRO_HUXLEY
+#define REPRAPPRO_HUXLEY
 //#define REPRAPPRO_MENDEL
 //#define REPRAPPRO_WALLACE
 
