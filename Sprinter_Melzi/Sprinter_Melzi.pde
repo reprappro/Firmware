@@ -1545,7 +1545,7 @@ void wait_for_temp()
         }
     #endif
     codenum = millis(); 
-    while ((current_raw < target_raw) && (status = STATUS_OK)) 
+    while ((current_raw < target_raw) && (status == STATUS_OK)) 
     {
         if( (millis() - codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
         {
