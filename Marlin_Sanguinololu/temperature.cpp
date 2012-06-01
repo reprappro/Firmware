@@ -283,11 +283,37 @@ void manage_heater()
 }
 
 #define PGM_RD_W(x)   (short)pgm_read_word(&x)
+
+
+#ifdef COMPUTE_THERMISTORS
+// Use algebra to work out temperatures, not tables
+// NB - this assumes all extruders use the same thermistor type.
+int temp2analogi(int celsius, const float& beta, const float& rs, const float& r_inf)
+{
+   float r = r_inf*exp(beta/(celsius - ABS_ZERO));
+   return (int)(0.5 + AD_RANGE*r/(r + rs));
+}
+
+float analog2tempi(int raw, const float& beta, const float& rs, const float& r_inf)
+{
+   float rawf = (float)raw;
+   return ABS_ZERO + beta/log( (rawf*rs/(AD_RANGE - rawf))/r_inf );
+}
+
+int temp2analog(int celsius, uint8_t e) { return temp2analogi(celsius, E_BETA, E_RS, E_R_INF); }
+int temp2analogBed(int celsius) { return temp2analogi(celsius, BED_BETA, BED_RS, BED_R_INF); }
+float analog2temp(int raw, uint8_t e) { return analog2tempi(raw, E_BETA, E_RS, E_R_INF); }
+float analog2tempBed(int raw) { return analog2tempi(raw, BED_BETA, BED_RS, BED_R_INF); }
+
+#else
+
+
 // Takes hot end temperature value as input and returns corresponding raw value. 
 // For a thermistor, it uses the RepRap thermistor temp table.
 // This is needed because PID in hydra firmware hovers around a given analog value, not a temp value.
 // This function is derived from inversing the logic from a portion of getTemperature() in FiveD RepRap firmware.
-int temp2analog(int celsius, uint8_t e) {
+int temp2analog(int celsius, uint8_t e) 
+{
   if(e >= EXTRUDERS)
   {
       SERIAL_ERROR_START;
@@ -426,6 +452,7 @@ float analog2tempBed(int raw) {
   #endif
   return 0;
 }
+#endif
 
 void tp_init()
 {

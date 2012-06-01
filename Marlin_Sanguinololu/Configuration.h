@@ -27,6 +27,7 @@
 // RAMPS 1.3 = 33
 // Gen6 = 5,
 // Sanguinololu 1.2 and above = 62
+// Melzi = 63
 // Ultimaker = 7,
 // Teensylu = 8
 #define MOTHERBOARD 62
@@ -34,6 +35,44 @@
 //===========================================================================
 //=============================Thermal Settings  ============================
 //===========================================================================
+
+// Set this if you want to define the constants in the thermistor circuit
+// and work out temperatures algebraically - added by AB.
+//#define COMPUTE_THERMISTORS
+
+#ifdef COMPUTE_THERMISTORS
+
+// See http://en.wikipedia.org/wiki/Thermistor#B_or_.CE.B2_parameter_equation
+
+// BETA is the B value
+// RS is the value of the series resistor in ohms
+// R_INF is R0.exp(-BETA/T0), where R0 is the thermistor resistance at T0 (T0 is in kelvin)
+// Normally T0 is 298.15K (25 C).  If you write that expression in brackets in the #define the compiler 
+// should compute it for you (i.e. it won't need to be calculated at run time).
+
+// If the A->D converter has a range of 0..1023 and the measured voltage is V (between 0 and 1023)
+// then the thermistor resistance, R = V.RS/(1023 - V)
+// and the temperature, T = BETA/ln(R/R_INF)
+// To get degrees celsius (instead of kelvin) add -273.15 to T
+
+// This DOES assume that all extruders use the same thermistor type.
+
+#define ABS_ZERO -273.15
+#define AD_RANGE 1023.0
+
+// RS 198-961
+#define E_BETA 3960.0
+#define E_RS 4700.0
+#define E_R_INF ( 100000.0*exp(-E_BETA/298.15) )
+
+// RS 484-0149; EPCOS B57550G103J
+#define BED_BETA 3480.0
+#define BED_RS 4700.0
+#define BED_R_INF ( 10000.0*exp(-BED_BETA/298.15) )
+
+#endif
+
+
 
 //// Thermistor settings:
 // 1 is 100k thermistor
