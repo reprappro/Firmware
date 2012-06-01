@@ -1,7 +1,22 @@
 #ifndef __CONFIGURATION_H
 #define __CONFIGURATION_H
 
+// Uncomment ONE of the next three lines - the one for your RepRap machine
+//#define REPRAPPRO_HUXLEY
+//#define REPRAPPRO_MENDEL
+//#define REPRAPPRO_WALLACE
 
+#ifndef REPRAPPRO_HUXLEY
+#ifndef REPRAPPRO_MENDEL
+#ifndef REPRAPPRO_WALLACE
+#error Uncomment one of #define REPRAPPRO_HUXLEY, REPRAPPRO_MENDEL or REPRAPPRO_WALLACE at the start of the file Configuration.h
+#endif
+#endif
+#endif
+
+// Uncomment this if you are experimenting, know what you are doing, and want to switch off some safety
+// features, e.g. allow extrude at low temperature etc.
+//#define DEVELOPING
 
 // This determines the communication speed of the printer
 //#define BAUDRATE 250000
@@ -30,7 +45,7 @@
 // Melzi = 63
 // Ultimaker = 7,
 // Teensylu = 8
-#define MOTHERBOARD 62
+#define MOTHERBOARD 63
 
 //===========================================================================
 //=============================Thermal Settings  ============================
@@ -58,7 +73,7 @@
 // This DOES assume that all extruders use the same thermistor type.
 
 #define ABS_ZERO -273.15
-#define AD_RANGE 1023.0
+#define AD_RANGE 16383
 
 // RS 198-961
 #define E_BETA 3960.0
@@ -69,6 +84,11 @@
 #define BED_BETA 3480.0
 #define BED_RS 4700.0
 #define BED_R_INF ( 10000.0*exp(-BED_BETA/298.15) )
+
+#define BED_USES_THERMISTOR
+#define HEATER_0_USES_THERMISTOR
+//#define HEATER_1_USES_THERMISTOR
+//#define HEATER_2_USES_THERMISTOR
 
 #endif
 
@@ -97,8 +117,16 @@
 //#define HEATER_2_USES_AD595
 
 // Select one of these only to define how the bed temp is read.
+#ifdef REPRAPPRO_HUXLEY
 #define THERMISTORBED 101
 #define BED_USES_THERMISTOR
+#endif
+
+#ifdef REPRAPPRO_MENDEL
+#define THERMISTORBED 4
+#define BED_USES_THERMISTOR
+#endif
+
 //#define BED_LIMIT_SWITCHING
 #ifdef BED_LIMIT_SWITCHING
   #define BED_HYSTERESIS 2 //only disable heating if T>target+BED_HYSTERESIS and enable heating if T>target-BED_HYSTERESIS
@@ -269,14 +297,31 @@ const bool Z_ENDSTOPS_INVERTING = false; // set to true to invert the logic of t
 
 #define min_software_endstops true //If true, axis won't move to coordinates less than zero.
 #define max_software_endstops true  //If true, axis won't move to coordinates greater than the defined lengths below.
-#define X_MAX_LENGTH 150
-#define Y_MAX_LENGTH 148
-#define Z_MAX_LENGTH 100
+
+
 
 //// MOVEMENT SETTINGS
 #define NUM_AXIS 4 // The axis order in all axis related arrays is X, Y, Z, E
+
+#ifdef REPRAPPRO_MENDEL
+
+#define X_MAX_LENGTH 210
+#define Y_MAX_LENGTH 210
+#define Z_MAX_LENGTH 100
+#define HOMING_FEEDRATE {10*60, 10*60, 1*60, 0}  // set the homing speeds (mm/min)
+#define FAST_HOME_FEEDRATE {50*60, 50*60, 1*60, 0}  // set the homing speeds (mm/min)
+#define DEFAULT_MAX_FEEDRATE  {500, 500, 3, 45}
+
+#else
+
+#define X_MAX_LENGTH 150
+#define Y_MAX_LENGTH 148
+#define Z_MAX_LENGTH 100
 #define HOMING_FEEDRATE {10*60, 10*60, 1*60, 0}  // set the homing speeds (mm/min)
 #define FAST_HOME_FEEDRATE {80*60, 80*60, 4*60, 0}  // set the homing speeds (mm/min)
+#define DEFAULT_MAX_FEEDRATE  {500, 500, 5, 45}    // (mm/sec)
+
+#endif
 
 
 //homing hits the endstop, then retracts by this distance, before it tries to slowly bump again:
@@ -295,7 +340,6 @@ const bool Z_ENDSTOPS_INVERTING = false; // set to true to invert the logic of t
 //#define DEFAULT_AXIS_STEPS_PER_UNIT   {78.7402,78.7402,200*8/3,760*1.1}                    // default steps per unit for ultimaker 
 //#define DEFAULT_AXIS_STEPS_PER_UNIT   {40, 40, 3333.92, 360} //sells mendel with v9 extruder
 //#define DEFAULT_AXIS_STEPS_PER_UNIT   {80.3232, 80.8900, 2284.7651, 757.2218} // SAE Prusa w/ Wade extruder
-#define DEFAULT_MAX_FEEDRATE          {500, 500, 5, 45}    // (mm/sec)    
 #define DEFAULT_MAX_ACCELERATION      {1500,1500,50,250}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
 
 #define DEFAULT_ACCELERATION          1500    // X, Y, Z and E max acceleration in mm/s^2 for printing moves 
@@ -406,9 +450,11 @@ const bool Z_ENDSTOPS_INVERTING = false; // set to true to invert the logic of t
 
 //this prevents dangerous Extruder moves, i.e. if the temperature is under the limit
 //can be software-disabled for whatever purposes by
+#ifdef DEVELOPING
 #define PREVENT_DANGEROUS_EXTRUDE
 #define EXTRUDE_MINTEMP 175
 #define EXTRUDE_MAXLENGTH (X_MAX_LENGTH+Y_MAX_LENGTH) //prevent extrusion of very large distances.
+#endif
 
 const int dropsegments=5; //everything with less than this number of steps will be ignored as move and joined with the next movement
 

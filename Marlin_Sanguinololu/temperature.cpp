@@ -291,12 +291,12 @@ void manage_heater()
 int temp2analogi(int celsius, const float& beta, const float& rs, const float& r_inf)
 {
    float r = r_inf*exp(beta/(celsius - ABS_ZERO));
-   return (int)(0.5 + AD_RANGE*r/(r + rs));
+   return AD_RANGE - (int)(0.5 + AD_RANGE*r/(r + rs));
 }
 
 float analog2tempi(int raw, const float& beta, const float& rs, const float& r_inf)
 {
-   float rawf = (float)raw;
+   float rawf = (float)(AD_RANGE - raw);
    return ABS_ZERO + beta/log( (rawf*rs/(AD_RANGE - rawf))/r_inf );
 }
 
@@ -764,7 +764,7 @@ ISR(TIMER0_COMPB_vect)
     
   if(temp_count >= 16) // 8 ms * 16 = 128ms.
   {
-    #ifdef HEATER_0_USES_AD595
+    #ifdef HEATER_0_USES_AD595 
       current_raw[0] = raw_temp_0_value;
     #else
       current_raw[0] = 16383 - raw_temp_0_value;
@@ -811,7 +811,7 @@ ISR(TIMER0_COMPB_vect)
           kill();
        }
     }
-  
+
 #if defined(BED_MAXTEMP) && (HEATER_BED_PIN > -1)
     if(current_raw_bed >= bed_maxttemp) {
        target_raw_bed = 0;
@@ -819,6 +819,7 @@ ISR(TIMER0_COMPB_vect)
        kill();
     }
 #endif
+
   }
 }
 
