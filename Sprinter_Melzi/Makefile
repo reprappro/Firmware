@@ -4,7 +4,7 @@
 # Arduino 0011 Makefile
 # Arduino adaptation by mellis, eighthave, oli.keller
 #
-# This has been tested with Arduino 0022.
+# This has been tested with Arduino 23 
 # 
 # This makefile allows you to build sketches from the command line
 # without the Arduino environment (or Java).
@@ -34,7 +34,7 @@
 
 TARGET = $(notdir $(CURDIR))
 #INSTALL_DIR = ../../arduino22/arduino-0022/
-INSTALL_DIR = /home/jeanmarc/arduino-0021
+INSTALL_DIR = /home/marco/arduino-0023
 UPLOAD_RATE = 38400
 AVRDUDE_PROGRAMMER = stk500v1
 PORT = /dev/ttyUSB*
@@ -50,13 +50,24 @@ F_CPU = 16000000
 # Below here nothing should be changed...
 
 ARDUINO = $(INSTALL_DIR)/hardware/arduino/cores/arduino
+ARDUINO_LIB_SRC = $(INSTALL_DIR)/libraries
 AVR_TOOLS_PATH = /usr/bin
-SRC =  $(ARDUINO)/pins_arduino.c $(ARDUINO)/wiring.c \
-$(ARDUINO)/wiring_analog.c $(ARDUINO)/wiring_digital.c \
-$(ARDUINO)/wiring_pulse.c \
-$(ARDUINO)/wiring_shift.c $(ARDUINO)/WInterrupts.c
-CXXSRC = $(ARDUINO)/HardwareSerial.cpp $(ARDUINO)/WMath.cpp $(ARDUINO)/WString.cpp\
-$(ARDUINO)/Print.cpp ./SdFile.cpp ./SdVolume.cpp ./Sd2Card.cpp
+SRC =  $(ARDUINO)/pins_arduino.c \
+	$(ARDUINO)/wiring.c \
+	$(ARDUINO)/wiring_analog.c \
+	$(ARDUINO)/wiring_digital.c \
+	$(ARDUINO)/wiring_pulse.c \
+	$(ARDUINO)/wiring_shift.c \
+	$(ARDUINO)/WInterrupts.c
+CXXSRC = $(ARDUINO)/HardwareSerial.cpp \
+	$(ARDUINO)/WMath.cpp \
+	$(ARDUINO)/WString.cpp \
+	$(ARDUINO)/Print.cpp  \
+	$(ARDUINO_LIB_SRC)/EEPROM/EEPROM.cpp \
+	./SdFile.cpp \
+	./SdVolume.cpp \
+	./Sd2Card.cpp \
+	./SerialManager.cpp 
 FORMAT = ihex
 
 
@@ -75,7 +86,7 @@ CDEFS = -DF_CPU=$(F_CPU)
 CXXDEFS = -DF_CPU=$(F_CPU)
 
 # Place -I options here
-CINCS = -I$(ARDUINO)
+CINCS = -I$(ARDUINO) -I$(ARDUINO_LIB_SRC)/EEPROM
 CXXINCS = -I$(ARDUINO)
 
 # Compiler flag to set the C Standard level.

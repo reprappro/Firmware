@@ -157,6 +157,8 @@ unsigned long previous_millis_cmd = 0;
 unsigned long max_inactive_time = 0;
 unsigned long stepper_inactive_time = 0;
 
+int byteToint(byte value);
+
 #ifdef SDSUPPORT
   Sd2Card card;
   SdVolume volume;
