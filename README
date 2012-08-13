@@ -1,3 +1,12 @@
+This firmware repository is not current and is maintained for legacy purposes.
+
+The current RepRapPro Firmware is Marlin.
+
+See https://github.com/reprappro/Marlin
+
+
+=============================================================================================================
+
 Firmware for RepRapPro Huxley, based on https://github.com/kliment/Sprinter.
 
 There are two slightly different configurations: 
